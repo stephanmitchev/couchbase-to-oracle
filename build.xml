@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="cb2oracle" default="prepare_deployment" basedir=".">
+	
+	
+	<property environment="env"/>
+	<property name="src.dir" value="${basedir}/src" />
+	<property name="lib.dir" value="${basedir}/lib" />
+	<property name="out.dir" value="target" />
+	<property name="jar.name" value="cb2oracle" />
+				
+	<path id="classpath">
+		<pathelement location="${lib.dir}/joda-time-convert-2.3-jdk5.jar"/>
+		<pathelement location="${lib.dir}/CartridgeServices.jar"/>
+		<pathelement location="${lib.dir}/ODCI.jar"/>
+		<pathelement location="${lib.dir}/ojdbc5.jar"/>
+	</path>	
+		
+	<target name="init">
+		<tstamp />
+	</target>
+	
+	<target name="clean" depends="init" description="Cleanup by removing all folders created by this script." >
+		<delete dir="${out.dir}/${jar.name}" />
+		<delete dir="${out.dir}" />
+	</target>
+  	
+  	<target name="prepare" depends="clean" description="Create build directories.">
+  		<mkdir dir="${out.dir}" />
+  		<mkdir dir="${out.dir}/${jar.name}" />
+  		<mkdir dir="${out.dir}/${jar.name}/META-INF" />
+  	</target>
+
+	
+	<target name="compile" depends="prepare" description="Compile java classes.">
+		<javac srcdir="${src.dir}" destdir="${out.dir}/${jar.name}" debug="true" fork="true" debuglevel="lines,vars,source" >
+			<include name="**/*.java" />
+			<classpath refid="classpath"/>
+		</javac>
+	</target>
+	
+	<target name="jar" depends="compile" description="Creare a JAR file.">
+		<jar destfile="${out.dir}/${jar.name}.jar" basedir="${out.dir}/${jar.name}" />
+	</target>
+		
+	<target name="clean_class_files" depends="jar" description="Cleanup by removing all folders created by this script." >
+		<delete dir="${out.dir}/${jar.name}" />
+	</target>
+  		
+	<target name="prepare_deployment" depends="clean_class_files" description="Copy all required JAR files to staging directory.">
+		<copy todir="${out.dir}">
+			<fileset dir="${lib.dir}">
+				<include name="*.jar"/>
+				<exclude name="ojdbc*"/>
+			</fileset>
+		</copy>
+	</target>
+		
+	
+	
+</project>

@@ -88,7 +88,7 @@ EXEC CBMODELER_SYNC('UNIQUENAME', 'ROOTTABLE', 'TIMECOLUMN');
 Here ROOTTABLE is the name of the generated table after the modelling process and TIMECOLUMN is the column in ROOTTABLE that has a time that is guaranteed (by your application) to be updated when the Couchbase document is updated.
 
 
-You can run the last step as often as you like. Unfortunately, it uses REST calls to the Couchbase cluster and not the more optimal NIO-based approach as implemented in the Java Couchbase Driver. Maybe when Oracle 12c wider acceptance (and we have JDK6!!!) we could use the drivers. And even then, when started, the driver creates threads which do not terminate until shutdown in called (and as you probably know, if you spawn a thread in a Java method called as a Stored Procedure, the call is not going to terminate until all threads are done. Bummer...)
+You can run the last step as often as you like. Unfortunately, it uses REST calls to the Couchbase cluster and not the more optimal NIO-based approach as implemented in the Java Couchbase Driver. Maybe when Oracle 12c wider acceptance (and we have JDK6!!!) we could use the drivers. And even then, when started, the driver creates threads which do not terminate until shutdown() is called (and as you probably know, if you spawn a thread in a Java method called as a Stored Procedure, the call is not going to terminate until all threads are done. Bummer...)
 
 	
 Limitations
