@@ -15,6 +15,11 @@ After you set it up, this tool works in two phases:
 2. Synchronizing - After the database is modeled, you can ask your favourite oracle DBA to schedule the sync SP to run every 5-6 minutes, as as often as the requirement calls.
 
 
+OSS Mentions
+--------------------
+This solution uses joda-time verbatim, with only the modifications that will make it compile under JDK5. This solution also uses the JSON parser from http://www.json.org with the modification on the JSONObject to use LinkedHashMap so it preserves the order of JSON properties.
+
+
 Installation
 --------------------
 You may require various grants to your schema to perform the installation and configuration. Generally, they boil down to permissions to deploy Java objects, create and execute procedures, and establish TCP connections to all of your Couchbase servers for ports 8091 and 11210. You should be best friends with your DBA at this point.
