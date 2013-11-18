@@ -3,6 +3,9 @@ couchbase-to-oracle
 
 Solution that allows data from Couchbase to be synchronized into an Oracle 10g database.
 
+For a Microsoft SQL Server Integration Services source component for Couchbase, visit: https://github.com/stephanmitchev/couchbase-to-ssis
+
+
 But Why?
 -------------------
 If you are curious how your JSONs would look like in a relational form, or simply you would like to use some rudimentary reporting tools like Microsoft's SSRS, this might come in handy. It's also great when you customers cannot live without their MS Access, and you - the developer - cannot live another day in the RDBMS world...
