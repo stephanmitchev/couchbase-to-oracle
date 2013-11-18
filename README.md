@@ -105,8 +105,10 @@ You can run the last step as often as you like. Unfortunately, it uses REST call
 Limitations
 ------------------
 This tool makes some very important assumptions.
+
 1. The data in the Couchbase documents is a JSON object {.....} - not an array.
 2. Arrays are converted to child tables, thus the elements of arrays must be objects, e.g.
+
 ```json
 {
   doctype: "object templates"
