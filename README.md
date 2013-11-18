@@ -14,8 +14,8 @@ If you are curious how your JSONs would look like in a relational form, or simpl
 How does it work?
 --------------------
 After you set it up, this tool works in two phases:
-1. First you model your data... automatically. After running the modeller SP, you will get model tables that contain the best representation of all fields found in the targeted view from Couchbase. Then you will review the model tables, rename abbreviated columns to sthg_more_sensbl, and when you are done, you will run the synchronization SP.
-2. Synchronizing - After the database is modeled, you can ask your favourite oracle DBA to schedule the sync SP to run every 5-6 minutes, as as often as the requirement calls.
+1. First you model your data... automatically. After running the modeler SP, you will get model tables that contain the best representation of all fields found in the targeted view from Couchbase. Then you will review the model tables, rename abbreviated columns to sthg_more_sensbl, and when you are done, you will run the synchronization SP.
+2. Synchronizing - After the database is modeled, you can ask your favorite oracle DBA to schedule the sync SP to run every 5-6 minutes, as often as the requirement calls.
 
 
 OSS Mentions
