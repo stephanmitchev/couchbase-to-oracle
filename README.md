@@ -47,22 +47,54 @@ Open your Oracle admin tool (Toad, SQL Developer, ...) and connect to the schema
 
 At this point you should have seven valid stored procedures. Here is how you finally link your Oracle to your Couchbase cluster.
 
-First run "EXEC CBMODELER_SETUP;". This will create the two "system" tables (COUCHBASE_VIEWS$ and COUCHBASE_MODELS$) necessary for this solution to work. COUCHBASE_VIEWS$ will contain all connection information to the Couchbase cluster; COUCHBASE_MODELS$ will contain the mapping between JSON fields and tables/columns.
+First run 
+```sql
+EXEC CBMODELER_SETUP;
+```
+This will create the two "system" tables (COUCHBASE_VIEWS$ and COUCHBASE_MODELS$) necessary for this solution to work. COUCHBASE_VIEWS$ will contain all connection information to the Couchbase cluster; COUCHBASE_MODELS$ will contain the mapping between JSON fields and tables/columns.
 
-Now run "EXEC CBMODELER_REGISTERVIEW('ORACLE_CB_VIEW_NAME', 'COUCHBASE_URL', 'BUCKET', 'PASSWORD', 'DDOC', 'VIEW');"
-http://li-dev2335.usacdev.loc:8092/
-EXEC CBMODELER_MODELVIEW('HC-STG-ALLFORMS', '', 'meta/name', 100);
-EXEC CBMODELER_CREATEVIEWTYPES('HC-STG-ALLFORMS');
+Now run 
+```sql
+EXEC CBMODELER_REGISTERVIEW('UNIQUENAME', 'COUCHBASE_URL', 'BUCKET', 'PASSWORD', 'DDOC', 'VIEW');
+```
+Where UNIQUENAME is a recognizable name for this view (this is how you will refer to it from Oracle); COUCHBASE_URL is a URL to the Couchbase cluster similar to this "http://myhostname.com:8092/"; the rest are self-explanatory.
 
-EXEC CBMODELER_SYNCSETUP('HC-STG-ALLFORMS');
-EXEC CBMODELER_SYNC('HC-STG-ALLFORMS', '_54_313_422', 'META_UPDATED');
+It's time to model the documents found in the view. Run this:
+```sql
+EXEC CBMODELER_MODELVIEW('UNIQUENAME', '', 'TABLENAMEXPATH', SAMPLE_SIZE);
+```
+TABLENAMEXPATH is the "jxpath" to a JSON field in all your documents returned by your view that is common (e.g. doctype, common/name). We will use this field to generate names for the relational tables that will be created.
 
+You will most probably need to customize the generated model. There is a pretty bad limitation on the object name size in Oracle, so the modelling algorithm has to abbreviate those names. You should look into the COUCHBASE_MODELS$ table and review the data ORACLE_NAME column. The two basic rules are 1. The values must be 30 chars or smaller, and 2. there should bo no duplicates. You can run:
+```sql
+SELECT * FROM COUCHBASE_MODELS$ WHERE LENGTH(TABLE_NAME) > 24 OR LENGTH(ORACLE_NAME) > 30;
+```
+to double check the lengths of objects. The duplicates are for homework :)
+
+When you are done with the customizations its time to create the tables that will represent the structure inferred from the sampled documents:
+```sql
+EXEC CBMODELER_CREATEVIEWTYPES('UNIQUENAME');
+```
+
+To initialize the synchronization run:
+```sql
+EXEC CBMODELER_SYNCSETUP('UNIQUENAME');
+```
+
+And finally, to perform your first sync, do:
+```sql
+EXEC CBMODELER_SYNC('UNIQUENAME', 'ROOTTABLE', 'TIMECOLUMN');
+```
+Here ROOTTABLE is the name of the generated table after the modelling process and TIMECOLUMN is the column in ROOTTABLE that has a time that is guaranteed (by your application) to be updated when the Couchbase document is updated.
+
+
+You can run the last step as often as you like. Unfortunately, it uses REST calls to the Couchbase cluster and not the more optimal NIO-based approach as implemented in the Java Couchbase Driver. Maybe when Oracle 12c wider acceptance (and we have JDK6!!!) we could use the drivers. And even then, when started, the driver creates threads which do not terminate until shutdown in called (and as you probably know, if you spawn a thread in a Java method called as a Stored Procedure, the call is not going to terminate until all threads are done. Bummer...)
 
 	
 Limitations
 ------------------
 This tool make some very important assumptions.
-1. The JSON data in the Couchbase documents is an object {.....}
+1. The data in the Couchbase documents is a JSON object {.....} - not an array.
 2. Arrays are converted to child tables, thus the elements of arrays must be objects, e.g.
 ```json
 {
