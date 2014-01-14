@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <title>Couchbase-to-oracle by stephanmitchev</title>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="container">
+        <h1>Couchbase-to-oracle</h1>
+        <h2>Solution that allows data from Couchbase to be synchronized into an Oracle 10g database</h2>
+
+        <section id="downloads">
+          <a href="https://github.com/stephanmitchev/couchbase-to-oracle/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/stephanmitchev/couchbase-to-oracle/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/stephanmitchev/couchbase-to-oracle" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+        </section>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="main_content">
+        <h1>
+<a name="couchbase-to-oracle" class="anchor" href="#couchbase-to-oracle"><span class="octicon octicon-link"></span></a>couchbase-to-oracle</h1>
+
+<p>Solution that allows data from Couchbase to be synchronized into an Oracle 10g database.</p>
+
+<p>For a Microsoft SQL Server Integration Services source component for Couchbase, visit: <a href="https://github.com/stephanmitchev/couchbase-to-ssis">https://github.com/stephanmitchev/couchbase-to-ssis</a></p>
+
+<h2>
+<a name="but-why" class="anchor" href="#but-why"><span class="octicon octicon-link"></span></a>But Why?</h2>
+
+<p>If you are curious how your JSONs would look like in a relational form, or simply you would like to use some rudimentary reporting tools like Microsoft's SSRS, this might come in handy. It's also great when you customers cannot live without their MS Access, and you - the developer - cannot live another day in the RDBMS world...</p>
+
+<h2>
+<a name="how-does-it-work" class="anchor" href="#how-does-it-work"><span class="octicon octicon-link"></span></a>How does it work?</h2>
+
+<p>After you set it up, this tool works in two phases:
+1. First you model your data... automatically. After running the modeler SP, you will get model tables that contain the best representation of all fields found in the targeted view from Couchbase. Then you will review the model tables, rename abbreviated columns to sthg_more_sensbl, and when you are done, you will run the synchronization SP.
+2. Synchronizing - After the database is modeled, you can ask your favorite oracle DBA to schedule the sync SP to run every 5-6 minutes, as often as the requirement calls.</p>
+
+<h2>
+<a name="oss-mentions" class="anchor" href="#oss-mentions"><span class="octicon octicon-link"></span></a>OSS Mentions</h2>
+
+<p>This solution uses joda-time verbatim, with only the modifications that will make it compile under JDK5. This solution also uses the JSON parser from <a href="http://www.json.org">http://www.json.org</a> with the modification on the JSONObject to use LinkedHashMap so it preserves the order of JSON properties.</p>
+
+<h2>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>You may require various grants to your schema to perform the installation and configuration. Generally, they boil down to permissions to deploy Java objects, create and execute procedures, and establish TCP connections to all of your Couchbase servers for ports 8091 and 11210. You should be best friends with your DBA at this point.</p>
+
+<ol>
+<li>Get the source</li>
+<li>Download JDK5 as this code is written for Oracle 10g which ships with its own custom jre 1.5. Oracle 12c will have JRE1.6 and that will be more fun.</li>
+<li>Get Ant if you don't have it already. We will maven-ize this for Oracle 12c.</li>
+<li>Run ant in the folder with the build.xml file</li>
+<li>Go to target and deploy the jars in the following order:
+<code>bash 
+a. loadjava -user username/password@tnsname -resolve CartridgeServices.jar
+b. loadjava -user username/password@tnsname -resolve ODCI.jar
+c. loadjava -user username/password@tnsname -resolve joda-time-convert-2.3-jdk5.jar
+d. loadjava -user username/password@tnsname -resolve cb2oracle.jar
+</code>
+Now go in your favourite Oracle administration tool and verify that all Java objects are valid.</li>
+</ol><h2>
+<a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h2>
+
+<p>Open your Oracle admin tool (Toad, SQL Developer, ...) and connect to the schema that you deployed the Java objects to. We need to register seven stored procedures that will implement the entire solution.</p>
+
+<div class="highlight highlight-sql"><pre><span class="mi">1</span><span class="p">.</span> <span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">PROCEDURE</span> <span class="n">CBMODELER_SETUP</span> <span class="k">AS</span> <span class="k">LANGUAGE</span> <span class="n">JAVA</span> <span class="n">NAME</span> <span class="s1">'CouchbaseModeler.setup()'</span><span class="p">;</span>
+<span class="mi">2</span><span class="p">.</span> <span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">PROCEDURE</span> <span class="n">CBMODELER_REGISTERVIEW</span><span class="p">(</span><span class="n">UNIQUENAME</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">URL</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">BUCKET</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">PASS</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">DDOC</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">VIEWNAME</span> <span class="k">IN</span> <span class="n">VARCHAR2</span> <span class="p">)</span> <span class="k">AS</span> <span class="k">LANGUAGE</span> <span class="n">JAVA</span> <span class="n">NAME</span> <span class="s1">'CouchbaseModeler.registerView(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)'</span><span class="p">;</span>
+<span class="mi">3</span><span class="p">.</span> <span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">PROCEDURE</span> <span class="n">CBMODELER_MODELVIEW</span><span class="p">(</span><span class="n">UNIQUENAME</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">ROOTXPATH</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">TABLENAMEXPATH</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">SAMPLESIZE</span> <span class="k">IN</span> <span class="nb">NUMBER</span><span class="p">)</span> <span class="k">AS</span> <span class="k">LANGUAGE</span> <span class="n">JAVA</span> <span class="n">NAME</span> <span class="s1">'CouchbaseModeler.modelView(java.lang.String, java.lang.String, java.lang.String, java.math.BigDecimal)'</span><span class="p">;</span>
+<span class="mi">4</span><span class="p">.</span> <span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">PROCEDURE</span> <span class="n">CBMODELER_MODELVIEW_ADDITIVE</span><span class="p">(</span><span class="n">UNIQUENAME</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">ROOTXPATH</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">TABLENAMEXPATH</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">SAMPLESIZE</span> <span class="k">IN</span> <span class="nb">NUMBER</span><span class="p">)</span> <span class="k">AS</span> <span class="k">LANGUAGE</span> <span class="n">JAVA</span> <span class="n">NAME</span> <span class="s1">'CouchbaseModeler.modelViewAdditive(java.lang.String, java.lang.String, java.lang.String, java.math.BigDecimal)'</span><span class="p">;</span>
+<span class="mi">5</span><span class="p">.</span> <span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">PROCEDURE</span> <span class="n">CBMODELER_CREATEVIEWTYPES</span><span class="p">(</span><span class="n">UNIQUENAME</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">)</span> <span class="k">AS</span> <span class="k">LANGUAGE</span> <span class="n">JAVA</span> <span class="n">NAME</span> <span class="s1">'CouchbaseModeler.createViewTypes(java.lang.String)'</span><span class="p">;</span>
+<span class="mi">6</span><span class="p">.</span> <span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">PROCEDURE</span> <span class="n">CBMODELER_SYNCSETUP</span><span class="p">(</span><span class="n">UNIQUENAME</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">)</span> <span class="k">AS</span> <span class="k">LANGUAGE</span> <span class="n">JAVA</span> <span class="n">NAME</span> <span class="s1">'CouchbaseSync.setupTables(java.lang.String)'</span><span class="p">;</span>
+<span class="mi">7</span><span class="p">.</span> <span class="k">CREATE</span> <span class="k">OR</span> <span class="k">REPLACE</span> <span class="k">PROCEDURE</span> <span class="n">CBMODELER_SYNC</span><span class="p">(</span><span class="n">UNIQUENAME</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">ROOTTABLE</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">,</span> <span class="n">TIMECOLUMN</span> <span class="k">IN</span> <span class="n">VARCHAR2</span><span class="p">)</span> <span class="k">AS</span> <span class="k">LANGUAGE</span> <span class="n">JAVA</span> <span class="n">NAME</span> <span class="s1">'CouchbaseSync.synchronize(java.lang.String, java.lang.String, java.lang.String)'</span><span class="p">;</span>
+</pre></div>
+
+<p>At this point you should have seven valid stored procedures. Here is how you finally link your Oracle to your Couchbase cluster.</p>
+
+<p>First run </p>
+
+<div class="highlight highlight-sql"><pre><span class="k">EXEC</span> <span class="n">CBMODELER_SETUP</span><span class="p">;</span>
+</pre></div>
+
+<p>This will create the two "system" tables (COUCHBASE_VIEWS$ and COUCHBASE_MODELS$) necessary for this solution to work. COUCHBASE_VIEWS$ will contain all connection information to the Couchbase cluster; COUCHBASE_MODELS$ will contain the mapping between JSON fields and tables/columns.</p>
+
+<p>Now run </p>
+
+<div class="highlight highlight-sql"><pre><span class="k">EXEC</span> <span class="n">CBMODELER_REGISTERVIEW</span><span class="p">(</span><span class="s1">'UNIQUENAME'</span><span class="p">,</span> <span class="s1">'COUCHBASE_URL'</span><span class="p">,</span> <span class="s1">'BUCKET'</span><span class="p">,</span> <span class="s1">'PASSWORD'</span><span class="p">,</span> <span class="s1">'DDOC'</span><span class="p">,</span> <span class="s1">'VIEW'</span><span class="p">);</span>
+</pre></div>
+
+<p>Where UNIQUENAME is a recognizable name for this view (this is how you will refer to it from Oracle); COUCHBASE_URL is a URL to the Couchbase cluster similar to this "<a href="http://myhostname.com:8092/">http://myhostname.com:8092/</a>"; the rest are self-explanatory.</p>
+
+<p>It's time to model the documents found in the view. Run this:</p>
+
+<div class="highlight highlight-sql"><pre><span class="k">EXEC</span> <span class="n">CBMODELER_MODELVIEW</span><span class="p">(</span><span class="s1">'UNIQUENAME'</span><span class="p">,</span> <span class="s1">''</span><span class="p">,</span> <span class="s1">'TABLENAMEXPATH'</span><span class="p">,</span> <span class="n">SAMPLE_SIZE</span><span class="p">);</span>
+</pre></div>
+
+<p>TABLENAMEXPATH is the "jxpath" to a JSON field in all your documents returned by your view that is common (e.g. doctype, common/name). We will use this field to generate names for the relational tables that will be created.</p>
+
+<p>You will most probably need to customize the generated model. There is a pretty bad limitation on the object name size in Oracle, so the modeling algorithm has to abbreviate those names. You should look into the COUCHBASE_MODELS$ table and review the data ORACLE_NAME column. The two basic rules are:
+1. The values must be 30 chars or smaller, and 
+2. there should be no duplicates. 
+You can run:</p>
+
+<div class="highlight highlight-sql"><pre><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">COUCHBASE_MODELS</span><span class="err">$</span> <span class="k">WHERE</span> <span class="k">LENGTH</span><span class="p">(</span><span class="k">TABLE_NAME</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">24</span> <span class="k">OR</span> <span class="k">LENGTH</span><span class="p">(</span><span class="n">ORACLE_NAME</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">;</span>
+</pre></div>
+
+<p>to double check the lengths of objects. The duplicates are for homework :)</p>
+
+<p>When you are done with the customizations it's time to create the tables that will represent the structure inferred from the sampled documents:</p>
+
+<div class="highlight highlight-sql"><pre><span class="k">EXEC</span> <span class="n">CBMODELER_CREATEVIEWTYPES</span><span class="p">(</span><span class="s1">'UNIQUENAME'</span><span class="p">);</span>
+</pre></div>
+
+<p>To initialize the synchronization run:</p>
+
+<div class="highlight highlight-sql"><pre><span class="k">EXEC</span> <span class="n">CBMODELER_SYNCSETUP</span><span class="p">(</span><span class="s1">'UNIQUENAME'</span><span class="p">);</span>
+</pre></div>
+
+<p>And finally, to perform your first sync, do:</p>
+
+<div class="highlight highlight-sql"><pre><span class="k">EXEC</span> <span class="n">CBMODELER_SYNC</span><span class="p">(</span><span class="s1">'UNIQUENAME'</span><span class="p">,</span> <span class="s1">'ROOTTABLE'</span><span class="p">,</span> <span class="s1">'TIMECOLUMN'</span><span class="p">);</span>
+</pre></div>
+
+<p>Here ROOTTABLE is the name of the generated table after the modeling process and TIMECOLUMN is the column in ROOTTABLE that has a time that is guaranteed (by your application) to be updated when the Couchbase document is updated.</p>
+
+<p>You can run the last step as often as you like. Unfortunately, it uses REST calls to the Couchbase cluster and not the more optimal NIO-based approach as implemented in the Java Couchbase Driver. Maybe when Oracle 12c wider acceptance (and we have JDK6!!!) we could use the drivers. And even then, when started, the driver creates threads which do not terminate until shutdown() is called (and as you probably know, if you spawn a thread in a Java method called as a Stored Procedure, the call is not going to terminate until all threads are done. Bummer...)</p>
+
+<h2>
+<a name="limitations" class="anchor" href="#limitations"><span class="octicon octicon-link"></span></a>Limitations</h2>
+
+<p>This tool makes some very important assumptions.</p>
+
+<ol>
+<li>The data in the Couchbase documents is a JSON object {.....} - not an array.</li>
+<li>Arrays are converted to child tables, thus the elements of arrays must be objects, e.g.</li>
+</ol><div class="highlight highlight-json"><pre><span class="p">{</span>
+  <span class="err">doctype:</span> <span class="nt">"object templates"</span>
+  <span class="err">name</span><span class="p">:</span> <span class="s2">"some intelligent object"</span><span class="p">,</span>
+  <span class="err">agents</span> <span class="err">:</span> <span class="err">[</span>
+    <span class="err">{name:</span> <span class="nt">"Agent 1"</span><span class="p">,</span> <span class="err">type:</span> <span class="nt">"leader"</span><span class="p">}</span><span class="err">,</span>
+    <span class="p">{</span><span class="err">name:</span> <span class="nt">"Agent 2"</span><span class="p">,</span> <span class="err">type:</span> <span class="nt">"soldier"</span><span class="p">,</span> <span class="err">weapon:</span> <span class="nt">"bazooka"</span><span class="p">}</span><span class="err">,</span>
+    <span class="p">{</span><span class="err">name:</span> <span class="nt">"Agent 3"</span><span class="p">,</span> <span class="err">type:</span> <span class="nt">"spy"</span><span class="p">,</span> <span class="err">special:</span> <span class="nt">"stealth"</span><span class="p">}</span>
+  <span class="err">]</span> 
+<span class="err">}</span>
+</pre></div>
+
+<p>This will create two tables: "object_templates" with columns (doctype, name) and "object_templates_agents" with columns (name, type, weapon, special)</p>
+      </section>
+    </div>
+
+    
+  </body>
+</html>
