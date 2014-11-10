@@ -26,6 +26,7 @@ import org.json.JSONTokener;
 /**
  * @author smitchev
  *
+ *
  */
 public class CouchbaseSync {
 
@@ -275,8 +276,8 @@ public class CouchbaseSync {
 			
 			conn.close();
 			
-		} catch (IOException ex) {
-			sendDBMSOutput("Exception: " + ex.getMessage(), conn);
+		} catch (Exception ex) {
+			sendDBMSOutput("General Exception: " + ex.getMessage(), conn);
 			
 			
 		} finally {
@@ -302,13 +303,14 @@ public class CouchbaseSync {
 		String sql = "INSERT INTO \"TBL_" + table.name.toUpperCase()
 				+ "\" VALUES (";
 
+		sendDBMSOutput("Processing ID:" + id + " SQL:" + sql + "...", conn);
 		for (int i = 0; i < table.rows.size(); i++) {
 			sql += " ?" + (i < table.rows.size() - 1 ? "," : "");
 		}
 
 		sql += ")";
 		
-		sendDBMSOutput("Processing ID:" + id + " SQL:" + sql, conn);
+		//sendDBMSOutput("Processing ID:" + id + " SQL:" + sql, conn);
 		
 
 		PreparedStatement psInsert;
@@ -361,6 +363,7 @@ public class CouchbaseSync {
 
 		String sql = "INSERT INTO \"TBL_" + modelTable.name.toUpperCase()
 				+ "\" VALUES (";
+		sendDBMSOutput("Child SQL for id: " + id + "," + sql + "...", conn); 
 		// Collect counters and initial row XPaths
 		for (int i = 0; i < modelTable.rows.size(); i++) {
 
@@ -409,7 +412,7 @@ public class CouchbaseSync {
 				for (int i = 0; i < row.size(); i++) {
 
 					DataColumn cell = row.get(i);
-					//sendDBMSOutput("Adding param: " + (i+1), conn);
+					//sendDBMSOutput("Adding param: " + (i+1) +", " + cell.name, conn);
 					
 					// Handle special case of DOC_ID
 					if (cell.name.equals("#ID")) {
@@ -442,7 +445,7 @@ public class CouchbaseSync {
 				psInsert.close();
 
 			} catch (SQLException e) {
-				sendDBMSOutput("Exception: " + e.getMessage(), conn);
+				sendDBMSOutput("Exception in processChildTable: " + e.getMessage(), conn);
 				
 			}
 
@@ -514,9 +517,16 @@ public class CouchbaseSync {
 		else if (typeName.equals(Boolean.class.getName()))
 			ps.setInt(idx, root.getBool(xPath) ? 1 : 0);
 		else if (typeName.equals(Long.class.getName()))
-			try {ps.setLong(idx, root.getLong(xPath));} catch(NumberFormatException e) {ps.setNull(idx, java.sql.Types.NULL);}
+			try {ps.setLong(idx, root.getLong(xPath));} catch(NumberFormatException e) 
+			{	ps.setNull(idx, java.sql.Types.NULL);
+				sendDBMSOutput("NumberFormatException for getLong, offending value is '" + root.getString(xPath) + ",", conn);
+
+			}
 		else if (typeName.equals(Double.class.getName()))
-			try {ps.setDouble(idx, root.getDouble(xPath));} catch(NumberFormatException e) {ps.setNull(idx, java.sql.Types.NULL);}
+			try {ps.setDouble(idx, root.getDouble(xPath));} catch(NumberFormatException e) 
+			{	ps.setNull(idx, java.sql.Types.NULL);
+				sendDBMSOutput("NumberFormatException for getDouble, offending value is '" + root.getString(xPath) + ",", conn);
+			}
 		else if (typeName.equals(Date.class.getName())) {
 			String dateStr = root.getString(xPath);
 			java.sql.Timestamp sqlTS = null;
@@ -535,6 +545,11 @@ public class CouchbaseSync {
 					sqlTS = new java.sql.Timestamp(dt.getMillis());
 				} catch (Exception ex1) {
 				}
+			}
+			
+			if (dateStr != null && dateStr.length() > 0 && sqlTS == null)
+			{
+				sendDBMSOutput("Exception for parsing date string, offending value is '" + root.getString(xPath) + ",", conn);
 			}
 
 			if (sqlTS != null)
