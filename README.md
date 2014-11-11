@@ -1,7 +1,7 @@
 couchbase-to-oracle
 ===================
 
-Solution that allows data from Couchbase to be synchronized into an Oracle 10g database.
+Solution that allows data from Couchbase to be synchronized into an Oracle 11g database.
 
 For a Microsoft SQL Server Integration Services source component for Couchbase, visit: https://github.com/stephanmitchev/couchbase-to-ssis
 
@@ -28,7 +28,7 @@ Installation
 You may require various grants to your schema to perform the installation and configuration. Generally, they boil down to permissions to deploy Java objects, create and execute procedures, and establish TCP connections to all of your Couchbase servers for ports 8091 and 11210. You should be best friends with your DBA at this point.
 
 1. Get the source
-2. Download JDK5 as this code is written for Oracle 10g which ships with its own custom jre 1.5. Oracle 12c will have JRE1.6 and that will be more fun.
+2. Download JDK5 as this code is written for Oracle 11g which ships with its own custom jre 1.5. Oracle 12c will have JRE1.6 and that will be more fun.
 3. Get Ant if you don't have it already. We will maven-ize this for Oracle 12c.
 4. Run ant in the folder with the build.xml file
 5. Go to target and deploy the jars in the following order:
