@@ -32,7 +32,7 @@
 
 	
 	<target name="compile" depends="prepare" description="Compile java classes.">
-		<javac srcdir="${src.dir}" destdir="${out.dir}/${jar.name}" debug="true" fork="true" debuglevel="lines,vars,source" >
+		<javac target="1.5" srcdir="${src.dir}" destdir="${out.dir}/${jar.name}" debug="true" fork="true" debuglevel="lines,vars,source" >
 			<include name="**/*.java" />
 			<classpath refid="classpath"/>
 		</javac>
